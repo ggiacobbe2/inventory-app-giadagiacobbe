@@ -205,6 +205,13 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   bool isSelecting = false;
   Set<String> selectedItems = {};
 
+  String searchQuery = '';
+  String? selectedCategory;
+  final lowStockMax = 10;
+  final lowPriceMax = 20.0;
+  bool filterLowStock = false;
+  bool filterLowPrice = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,80 +242,172 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           ),
         ],
       ),
-      body: StreamBuilder<List<Item>>(
-        stream: firestoreService.getItems(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          final items = snapshot.data ?? [];
-          if (items.isEmpty) {
-            return const Center(child: Text('No items found.'));
-          }
-          return ListView.builder(
+      body: Column(
+        children: [
+          Padding(
             padding: const EdgeInsets.all(8.0),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4.0),
-                child: ListTile(
-                  leading: isSelecting
-                      ? Checkbox(
-                          value: selectedItems.contains(item.id),
-                          onChanged: (selected) {
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal, // prevents overflow
+              child: Row(
+                children: [
+                  DropdownButton<String>(
+                    hint: const Text('Filter by Category'),
+                    value: selectedCategory,
+                    items: <String>[
+                      'All',
+                      'Home Goods',
+                      'Electronics',
+                      'Clothing',
+                      'Books',
+                      'Food',
+                      'Other'
+                    ].map((cat) =>
+                        DropdownMenuItem(value: cat, child: Text(cat)))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedCategory = value;
+                        filterLowStock = false;
+                        filterLowPrice = false;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    child: const Text('Low Stock'),
+                    onPressed: () {
+                      setState(() {
+                        filterLowStock = true;
+                        filterLowPrice = false;
+                        selectedCategory = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    child: const Text('Low Price'),
+                    onPressed: () {
+                      setState(() {
+                        filterLowStock = false;
+                        filterLowPrice = true;
+                        selectedCategory = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: StreamBuilder<List<Item>>(
+              stream: firestoreService.getItems(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                var items = snapshot.data ?? [];
+                if (items.isEmpty) {
+                  return const Center(child: Text('No items found.'));
+                }
+                if (searchQuery.isNotEmpty) {
+                  items = items.where((i) => i.name.toLowerCase().contains(searchQuery)).toList();
+                }
+
+                if (selectedCategory != null && selectedCategory != 'All') {
+                  items = items.where((i) => i.category == selectedCategory).toList();
+                }
+
+                if (items.isEmpty) {
+                  return const Center(child: Text('No items found.'));
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = selectedItems.contains(item.id);
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: ListTile(
+                        leading: isSelecting
+                            ? Checkbox(
+                                value: isSelected,
+                                onChanged: (selected) {
+                                  setState(() {
+                                    if (selected == true) {
+                                      selectedItems.add(item.id!);
+                                    } else {
+                                      selectedItems.remove(item.id);
+                                    }
+                                  });
+                                },
+                              )
+                            : null,
+                        title: Text(item.name),
+                        subtitle: Text(
+                            'Quantity: ${item.quantity}, Price: \$${item.price.toStringAsFixed(2)}'),
+                        trailing: !isSelecting
+                            ? IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () =>
+                                    firestoreService.deleteItem(item.id!),
+                              )
+                            : null,
+                        onTap: () {
+                          if (isSelecting) {
                             setState(() {
-                              if (selected == true) {
-                                selectedItems.add(item.id!);
+                              if (isSelected) {
+                                selectedItems.remove(item.id!);
                               } else {
-                                selectedItems.remove(item.id);
+                                selectedItems.add(item.id!);
                               }
                             });
-                          },
-                        )
-                      : null,
-                  title: Text(item.name),
-                  subtitle: Text('Quantity: ${item.quantity}, Price: \$${item.price.toStringAsFixed(2)}'),
-                  trailing: !isSelecting
-                      ? IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => firestoreService.deleteItem(item.id!),
-                        )
-                      : null,
-                  onTap: () {
-                    if (isSelecting) {
-                      setState(() {
-                        if (isSelecting) {
-                          selectedItems.remove(item.id!);
-                        } else {
-                          selectedItems.add(item.id!);
-                        }
-                      });
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AddEditItemScreen(item: item),
-                        ),
-                      );
-                    }
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AddEditItemScreen(item: item),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
                   },
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => AddEditItemScreen()),
+            MaterialPageRoute(builder: (_) => AddEditItemScreen()),
           );
         },
       ),
