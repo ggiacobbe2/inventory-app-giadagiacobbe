@@ -65,6 +65,44 @@ class Item {
   }
 }
 
+class FirestoreService {
+  final CollectionReference itemsCollection =
+      FirebaseFirestore.instance.collection('items');
+
+  Future<void> addItem(Item item) async {
+    try {
+      await itemsCollection.add(item.toMap());
+    } catch (e) {
+      print('Error adding item: $e');
+    }
+  }
+
+  Future<void> updateItem(Item item) async {
+    if (item.id == null) return;
+    try {
+      await itemsCollection.doc(item.id).update(item.toMap());
+    } catch (e) {
+      print('Error updating item: $e');
+    }
+  }
+
+  Future<void> deleteItem(String id) async {
+    try {
+      await itemsCollection.doc(id).delete();
+    } catch (e) {
+      print('Error deleting item: $e');
+    }
+  }
+
+  Stream<List<Item>> getItems() {
+    return itemsCollection.snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Item.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+          .toList();
+    });
+  }
+}
+
 class _InventoryHomePageState extends State<InventoryHomePage> {
   // TODO: 1. Initialize Firestore & Create a Stream for items
   // TODO: 2. Build a ListView using a StreamBuilder to display items
