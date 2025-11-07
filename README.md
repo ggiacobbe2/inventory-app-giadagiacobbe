@@ -1,3 +1,5 @@
+Apologies in advanced for the how the folders are setup in Github. Please click on 'inclass15' to view all code.
+
 **This app stands as a basic inventory app where users can view, add, update, and delete items in their inventory, all while syncing real-time.**  
 
 **How to Use**
