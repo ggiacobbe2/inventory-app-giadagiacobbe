@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "503957353721",
+    "project_id": "inventory-app-giadagiacobbe",
+    "storage_bucket": "inventory-app-giadagiacobbe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:503957353721:android:7bcf631f063956e54d9e28",
+        "android_client_info": {
+          "package_name": "com.example.inclass15"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDa7QtrgpN5it1LxrlzUxkcIaFevLlIJQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
